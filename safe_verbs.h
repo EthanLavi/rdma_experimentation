@@ -205,14 +205,8 @@ inline void Ibv_post_send(struct ibv_qp *qp, struct ibv_send_wr *wr, struct ibv_
 void Ibv_poll_cq(struct ibv_cq* cq) {
   struct ibv_wc wc;
   int result;
-  int count = 0;
   do {
     result = ibv_poll_cq(cq, 1, &wc);
-    if (count == 1000){
-        result = 1;
-    } else {
-        count++;
-    }
   } while (result == 0);
 
   if (result > 0 && wc.status == ibv_wc_status::IBV_WC_SUCCESS) {
