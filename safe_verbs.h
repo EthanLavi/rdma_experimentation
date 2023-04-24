@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <string>
+#include <unistd.h>
 
 //  To make code cleaner with no error handling required.
 
@@ -47,7 +48,7 @@ inline void Ibv_fork_init(){
 inline struct ibv_device** Ibv_get_device_list(){
     int length = 0;
     struct ibv_device **device_list = ibv_get_device_list(&length);
-    if (device_list == NULL || length == 0){
+    if (device_list == nullptr || length == 0){
         fprintf(stderr, "Error in finding RDMA devices. Are there any available?\n");
         exit(1);
     }
@@ -59,7 +60,7 @@ inline struct ibv_device** Ibv_get_device_list(){
  */
 inline struct ibv_context* Ibv_open_device(ibv_device* device){
     struct ibv_context* ctx = ibv_open_device(device);
-    if (ctx == NULL){
+    if (ctx == nullptr){
         fprintf(stderr, "Error, failed to open the device '%s'\n", ibv_get_device_name(device));
         exit(1);
     }
@@ -82,7 +83,7 @@ inline void Ibv_close_device(struct ibv_context *context){
  */
 inline struct ibv_pd* Ibv_alloc_pd(struct ibv_context* context){
     struct ibv_pd* pd = ibv_alloc_pd(context);
-    if (pd == NULL){
+    if (pd == nullptr){
         fprintf(stderr, "Error, failed to allocate protection domain\n");
         exit(1);
     }
@@ -112,7 +113,7 @@ inline void Ibv_dealloc_pd(struct ibv_pd* pd){
  */
 inline struct ibv_cq* Ibv_create_cq(struct ibv_context *context, int cqe, void *cq_context, struct ibv_comp_channel* channel, int comp_vector){
     struct ibv_cq *cq = ibv_create_cq(context, cqe, cq_context, channel, comp_vector);
-    if (cq == NULL){
+    if (cq == nullptr){
         fprintf(stderr, "Error, failed to create a completion queue with %s\n", get_error_message(errno));
         exit(1);
     }
@@ -135,7 +136,7 @@ inline void Ibv_destroy_cq(struct ibv_cq* cq){
  */
 struct ibv_qp* Ibv_create_qp(struct ibv_pd* pd, struct ibv_qp_init_attr* qp_init_attr){
     ibv_qp* qp = ibv_create_qp(pd, qp_init_attr);
-    if (qp == NULL){
+    if (qp == nullptr){
         fprintf(stderr, "Error, cannot create queue pair with %s\n", get_error_message(errno));
         exit(1);
     }
@@ -169,7 +170,7 @@ inline void Ibv_modify_qp(struct ibv_qp* qp, struct ibv_qp_attr* qp_attr, int at
 */
 inline struct ibv_mr* Ibv_reg_mr(struct ibv_pd *pd, void *addr, size_t length){
     struct ibv_mr* mr = ibv_reg_mr(pd, addr, length, IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_ATOMIC);
-    if (mr == NULL){
+    if (mr == nullptr){
         fprintf(stderr, "Cannot register a memory region %d:%s\n", errno, get_error_message(errno));
         exit(1);
     }
@@ -204,8 +205,14 @@ inline void Ibv_post_send(struct ibv_qp *qp, struct ibv_send_wr *wr, struct ibv_
 void Ibv_poll_cq(struct ibv_cq* cq) {
   struct ibv_wc wc;
   int result;
+  int count = 0;
   do {
     result = ibv_poll_cq(cq, 1, &wc);
+    if (count == 1000){
+        result = 1;
+    } else {
+        count++;
+    }
   } while (result == 0);
 
   if (result > 0 && wc.status == ibv_wc_status::IBV_WC_SUCCESS) {

@@ -3,8 +3,10 @@
 
 #include <infiniband/verbs.h>
 #include <stdio.h>
+#include <unistd.h>
 
-// Alternate building :: g++ -omain main.cc safe_verbs.h states.h -libverbs
+// Alternate building :: g++ -omain main.cc safe_verbs.h states.h -libverbs -g
+static uint32_t BLOCK_SIZE = 256;
 
 int main(int argc, char **argv){
     // STEP 1: Create an infiniband context ------------------
@@ -44,7 +46,7 @@ int main(int argc, char **argv){
     qp_attr.qp_state = ibv_qp_state::IBV_QPS_INIT;
     qp_attr.pkey_index = 0;
     qp_attr.port_num = 1;
-    qp_attr.qp_access_flags = 0;
+    qp_attr.qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_ATOMIC;
     // Modify into INIT state
     Ibv_modify_qp(qp, &qp_attr, IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS);
 
@@ -78,10 +80,9 @@ int main(int argc, char **argv){
     printf("Modified the queue pair\n");
 
     // STEP 7: Register a memory region --------------
-    void* mr_buffer = malloc(1 << 8);
-    struct ibv_mr *mr = Ibv_reg_mr(pd, mr_buffer, 1 << 8);
-    // memset(&mr_buffer, 0, 1 << 8);
-    printf("Created memory region\n");
+    void* mr_buffer = malloc(BLOCK_SIZE);
+    memset(mr_buffer, 0, BLOCK_SIZE);
+    struct ibv_mr *mr = Ibv_reg_mr(pd, mr_buffer, BLOCK_SIZE);
 
     // STEP 8: Exchange memory region information to handle operations -----------------
     // This step requires nothing because we are a local node
@@ -90,26 +91,29 @@ int main(int argc, char **argv){
     struct ibv_send_wr rdma_wr;
     struct ibv_send_wr *bad_wr;
     struct ibv_sge op;
-    char* buffer_side = (char*) mr_buffer;
-    // buffer_side[0] = 'a';
-    op.addr = 0;
-    op.length = 1;
+    char* data_buffer = (char*) mr_buffer;
+    memset(&op, 0, sizeof(op));
+    data_buffer[8] = 1;
+    data_buffer[9] = 1;
+    data_buffer[10] = 1;
+    data_buffer[11] = 1;
+
+    op.addr = (uint64_t) mr->addr;
+    op.length = 4;
     op.lkey = mr->lkey;
-    rdma_wr.wr.rdma.remote_addr = (uint64_t) mr->addr;
+
+    rdma_wr.wr.rdma.remote_addr = (uint64_t) mr->addr + 8;
     rdma_wr.wr.rdma.rkey = mr->rkey;
-    rdma_wr.opcode = IBV_WR_RDMA_WRITE;
+    rdma_wr.opcode = IBV_WR_RDMA_READ;
     rdma_wr.sg_list = &op;
     rdma_wr.num_sge = 1;
     Ibv_post_send(qp, &rdma_wr, &bad_wr);
-    // Blocks until write is finished
+    // Blocks until write is finished?
+    sleep(1);
     Ibv_poll_cq(cq);
 
-    if (buffer_side[0] == 'b'){
-        printf("Super Successful Change!\n");
-    } else if (buffer_side[0] != 'a') {
-        printf("Successful Change.\n");
-    } else {
-        printf("Failed Change?");
+    for (int i = 0; i < 20; i++){
+        printf("%d", data_buffer[i]);
     }
 
     // CLEANUP STEP ---------------------------
