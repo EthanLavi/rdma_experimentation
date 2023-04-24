@@ -1,6 +1,6 @@
 cc_binary(
     name = "main",
-    srcs = ["main.cc"],
+    srcs = ["main.cc", "safe_verbs.h", "states.h"],
     linkopts = [
         "-libverbs",
     ],

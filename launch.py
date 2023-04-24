@@ -20,16 +20,10 @@ FLAGS = flags.FLAGS
 # Experiment configuration
 flags.DEFINE_string('ssh_keyfile', '~/.ssh/id_rsa', 'Path to ssh file for authentication')
 flags.DEFINE_string('ssh_user', 'esl225', 'Username for login')
-flags.DEFINE_string('nodefile', '../rome/scripts/nodefiles/r320.csv', 'Path to csv with the node names')
+flags.DEFINE_string('nodefile', 'scripts/nodefiles/r320.csv', 'Path to csv with the node names')
 flags.DEFINE_string('experiment_name', None, 'Used as local save directory', required=True)
-flags.DEFINE_string('bin_dir', 'RDMA/rdma_iht', 'Directory where we run bazel build from')
+flags.DEFINE_string('bin_dir', 'venice', 'Directory where we run bazel build from')
 flags.DEFINE_bool('dry_run', required=True, default=None, help='Print the commands instead of running them')
-
-# Program run-types
-flags.DEFINE_bool('send_bulk', required=False, default=False, help="Whether to run bulk operations (more for benchmarking)")
-flags.DEFINE_bool('send_test', required=False, default=False, help="Whether to run basic method testing")
-flags.DEFINE_bool('send_exp', required=False, default=False, help="Whether to run an experiment")
-flags.DEFINE_enum('log_level', 'info', ['info', 'debug', 'trace'], 'The level of print-out in the program')
 
 SINGLE_QUOTE = "'\"'\"'"
 def make_one_line(proto):
@@ -87,17 +81,7 @@ def main(args):
             # Construct ssh command and payload
             ssh_login = f"ssh -i {FLAGS.ssh_keyfile} {FLAGS.ssh_user}@{nodealias}.{domain_name(nodetype)}"
             bazel_path = f"/users/{FLAGS.ssh_user}/go/bin/bazelisk"
-            payload = f"cd {FLAGS.bin_dir}; {bazel_path} run main --log_level={FLAGS.log_level} --"
-            # Adding run-type
-            if FLAGS.send_test:
-                payload += " --send_test"
-            elif FLAGS.send_bulk:
-                payload += " --send_bulk"
-            elif FLAGS.send_exp:
-                payload += " --send_exp"
-            else:
-                print("Must specify whether testing methods '--send_test', doing bulk operations '--send_bulk', or sending experiment '--send_exp'")
-                exit(1)
+            payload = f"cd {FLAGS.bin_dir}; {bazel_path} run main"
             # Tuple: (Creating Command | Output File Name)
             commands.append((' '.join([ssh_login, quote(payload)]), nodename))
     # Execute the commands and let us know we've finished
