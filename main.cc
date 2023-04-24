@@ -109,7 +109,6 @@ int main(int argc, char **argv){
     rdma_wr.num_sge = 1;
     Ibv_post_send(qp, &rdma_wr, &bad_wr);
     // Blocks until write is finished?
-    sleep(1);
     Ibv_poll_cq(cq);
 
     for (int i = 0; i < 20; i++){
