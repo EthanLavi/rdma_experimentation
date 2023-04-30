@@ -1,14 +1,43 @@
 #include "safe_verbs.h"
 #include "states.h"
+#include "tcp.h"
 
+#include <stdlib.h>
 #include <infiniband/verbs.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <thread>
 
 // Alternate building :: g++ -omain main.cc safe_verbs.h states.h -libverbs -g
 static uint32_t BLOCK_SIZE = 256;
 
+typedef struct { 
+  union {
+    struct {
+      uint64_t a;
+      uint64_t b;
+      uint64_t c;
+    } ints;
+    char data[24];
+  } content;
+  char padding = '\0';
+} message;
+
 int main(int argc, char **argv){
+    char hostname[100];
+    gethostname(hostname, 100);
+    bool is_server = hostname[4] == '0';
+
+    // Create a connection between the nodes
+    int sockfd;
+    if (is_server){
+      sockfd = link(is_server, "127.0.0.1");
+    } else {
+      // Give some time for the server to start
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      sockfd = link(is_server, "10.10.1.1");
+    }
+
     // STEP 1: Create an infiniband context ------------------
     // Apparently I need to call fork before everything, otherwise forking is unsafe
     Ibv_fork_init();
@@ -39,9 +68,51 @@ int main(int argc, char **argv){
     ibv_query_port(ctx, 1, &port_attr);
     uint16_t lid = port_attr.lid;
     uint32_t destination_qp_number = qp->qp_num;
+    message m;
+    message rec_buf;
+    printf("Sent Data: %u %u\n", lid, destination_qp_number);
+    m.content.ints.a = lid;
+    m.content.ints.b = destination_qp_number; 
+    printf("sockfd %d\n", sockfd);
+    if (is_server){
+      Write(sockfd, m.content.data);
+      Read(sockfd, rec_buf.content.data);
+    } else {
+      Read(sockfd, rec_buf.content.data);
+      Write(sockfd, m.content.data);
+    }
+    uint16_t dlid = rec_buf.content.ints.a;
+    uint32_t ddqp_num = rec_buf.content.ints.b;
+    printf("Received Data: %u %u\n", dlid, ddqp_num);
 
     // STEP 6: Change the queue pair state -----------------
-    struct ibv_qp_attr qp_attr = init_qp_attr();
+    ibv_qp_attr attr;
+    int attr_mask;
+
+    attr = DefaultQpAttr();
+    attr.qp_state = IBV_QPS_INIT;
+    attr.port_num = 1;
+     attr_mask =
+      IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS;
+    printf("Loopback: IBV_QPS_INIT\n");
+    Ibv_modify_qp(qp, &attr, attr_mask);
+
+    attr.ah_attr.dlid = lid;
+    attr.qp_state = IBV_QPS_RTR;
+    attr.dest_qp_num = destination_qp_number;
+    attr.ah_attr.port_num = 1;
+    attr_mask =
+      (IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN |
+     IBV_QP_RQ_PSN | IBV_QP_MAX_DEST_RD_ATOMIC | IBV_QP_MIN_RNR_TIMER);
+    printf("Loopback: IBV_QPS_RTR\n");
+    Ibv_modify_qp(qp, &attr, attr_mask);
+
+    attr.qp_state = IBV_QPS_RTS;
+    attr_mask = (IBV_QP_STATE | IBV_QP_SQ_PSN | IBV_QP_TIMEOUT |
+               IBV_QP_RETRY_CNT | IBV_QP_RNR_RETRY | IBV_QP_MAX_QP_RD_ATOMIC);
+    printf("Loopback: IBV_QPS_RTS\n");
+    Ibv_modify_qp(qp, &attr, attr_mask);
+    /*struct ibv_qp_attr qp_attr = init_qp_attr();
     // Setting the fields
     qp_attr.qp_state = ibv_qp_state::IBV_QPS_INIT;
     qp_attr.pkey_index = 0;
@@ -77,7 +148,7 @@ int main(int argc, char **argv){
     // Modifying into Ready to Send (RTS) state
 
     Ibv_modify_qp(qp, &qp_attr, IBV_QP_STATE | IBV_QP_SQ_PSN | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT | IBV_QP_RNR_RETRY | IBV_QP_MAX_QP_RD_ATOMIC);
-    printf("Modified the queue pair\n");
+    printf("Modified the queue pair\n");*/
 
     // STEP 7: Register a memory region --------------
     void* mr_buffer = malloc(BLOCK_SIZE);
@@ -93,11 +164,16 @@ int main(int argc, char **argv){
     struct ibv_sge op;
     char* data_buffer = (char*) mr_buffer;
     memset(&op, 0, sizeof(op));
-    data_buffer[8] = 1;
-    data_buffer[9] = 1;
-    data_buffer[10] = 1;
-    data_buffer[11] = 1;
-
+    printf("%s\n", hostname);
+    if (hostname[4] == '0'){
+      data_buffer[8] = 1;
+      data_buffer[9] = 1;
+      data_buffer[10] = 1;
+      data_buffer[11] = 1;
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+    
     op.addr = (uint64_t) mr->addr;
     op.length = 4;
     op.lkey = mr->lkey;
@@ -107,16 +183,25 @@ int main(int argc, char **argv){
     rdma_wr.opcode = IBV_WR_RDMA_READ;
     rdma_wr.sg_list = &op;
     rdma_wr.num_sge = 1;
+
+    printf("Before: ");
+    for (int i = 0; i < 20; i++){
+        printf("%d", data_buffer[i]);
+    }
+
     Ibv_post_send(qp, &rdma_wr, &bad_wr);
     // Blocks until write is finished?
     Ibv_poll_cq(cq);
 
+    printf("\nAfter: ");
     for (int i = 0; i < 20; i++){
         printf("%d", data_buffer[i]);
     }
 
     // CLEANUP STEP ---------------------------
     free(mr_buffer);
+    // Close communication sockets
+    close(sockfd);
     // Deregister a memory region
     Ibv_dereg_mr(mr);
     // Close queue pair

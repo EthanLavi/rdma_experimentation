@@ -5,7 +5,6 @@
 #include <unistd.h>
 
 //  To make code cleaner with no error handling required.
-
 const char* get_error_message(int err_val){
     switch(err_val){
         case EINVAL:
@@ -19,7 +18,7 @@ const char* get_error_message(int err_val){
         case EBUSY:
             return "Error: Busy because in the middle of processing";
         default:
-            return "Error: Unknown";
+            return strerror(err_val);
     }
 }
 

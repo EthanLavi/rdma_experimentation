@@ -21,3 +21,20 @@ struct ibv_qp_attr init_qp_attr(){
     memset(&qp_attr, 0, sizeof(qp_attr));
     return qp_attr;
 }
+
+ibv_qp_attr DefaultQpAttr() {
+    ibv_qp_attr attr;
+    memset(&attr, 0, sizeof(attr));
+    attr.qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ |
+                           IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_ATOMIC;
+    attr.max_dest_rd_atomic = 8;
+    attr.path_mtu = IBV_MTU_4096;
+    attr.min_rnr_timer = 12;
+    attr.rq_psn = 0;
+    attr.sq_psn = 0;
+    attr.timeout = 12;
+    attr.retry_cnt = 7;
+    attr.rnr_retry = 1;
+    attr.max_rd_atomic = 8;
+    return attr;
+  }
