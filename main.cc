@@ -70,10 +70,8 @@ int main(int argc, char **argv){
     uint32_t destination_qp_number = qp->qp_num;
     message m;
     message rec_buf;
-    printf("Sent Data: %u %u\n", lid, destination_qp_number);
     m.content.ints.a = lid;
     m.content.ints.b = destination_qp_number; 
-    printf("sockfd %d\n", sockfd);
     if (is_server){
       Write(sockfd, m.content.data);
       Read(sockfd, rec_buf.content.data);
@@ -83,12 +81,11 @@ int main(int argc, char **argv){
     }
     uint16_t dlid = rec_buf.content.ints.a;
     uint32_t ddqp_num = rec_buf.content.ints.b;
-    printf("Received Data: %u %u\n", dlid, ddqp_num);
 
     // STEP 6: Change the queue pair state -----------------
-    ibv_qp_attr attr;
+   /*
+       ibv_qp_attr attr;
     int attr_mask;
-
     attr = DefaultQpAttr();
     attr.qp_state = IBV_QPS_INIT;
     attr.port_num = 1;
@@ -97,9 +94,9 @@ int main(int argc, char **argv){
     printf("Loopback: IBV_QPS_INIT\n");
     Ibv_modify_qp(qp, &attr, attr_mask);
 
-    attr.ah_attr.dlid = lid;
+    attr.ah_attr.dlid = dlid;
     attr.qp_state = IBV_QPS_RTR;
-    attr.dest_qp_num = destination_qp_number;
+    attr.dest_qp_num = ddqp_num;
     attr.ah_attr.port_num = 1;
     attr_mask =
       (IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN |
@@ -112,7 +109,9 @@ int main(int argc, char **argv){
                IBV_QP_RETRY_CNT | IBV_QP_RNR_RETRY | IBV_QP_MAX_QP_RD_ATOMIC);
     printf("Loopback: IBV_QPS_RTS\n");
     Ibv_modify_qp(qp, &attr, attr_mask);
-    /*struct ibv_qp_attr qp_attr = init_qp_attr();
+    */
+    
+    struct ibv_qp_attr qp_attr = init_qp_attr();
     // Setting the fields
     qp_attr.qp_state = ibv_qp_state::IBV_QPS_INIT;
     qp_attr.pkey_index = 0;
@@ -125,7 +124,7 @@ int main(int argc, char **argv){
     // Setting the fields
     qp_attr.qp_state = ibv_qp_state::IBV_QPS_RTR;
     qp_attr.path_mtu = IBV_MTU_4096;
-    qp_attr.dest_qp_num = destination_qp_number;
+    qp_attr.dest_qp_num = ddqp_num;
     qp_attr.rq_psn = 0;
     qp_attr.max_dest_rd_atomic = 1;
     qp_attr.min_rnr_timer = 12;
@@ -133,7 +132,7 @@ int main(int argc, char **argv){
     qp_attr.ah_attr.sl = 0;
     qp_attr.ah_attr.src_path_bits = 0;
     qp_attr.ah_attr.port_num = 1;
-    qp_attr.ah_attr.dlid = lid;
+    qp_attr.ah_attr.dlid = dlid;
     // Modifying into Ready to Receive (RTR) state
     Ibv_modify_qp(qp, &qp_attr, IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN | IBV_QP_RQ_PSN | IBV_QP_MAX_DEST_RD_ATOMIC | IBV_QP_MIN_RNR_TIMER);
 
@@ -141,14 +140,14 @@ int main(int argc, char **argv){
     // Setting fields
     qp_attr.qp_state = ibv_qp_state::IBV_QPS_RTS;
     qp_attr.sq_psn = 0;
-    qp_attr.timeout = 14;
+    qp_attr.timeout = 14; 
     qp_attr.retry_cnt = 7;
     qp_attr.rnr_retry = 7;
     qp_attr.max_rd_atomic = 1;
     // Modifying into Ready to Send (RTS) state
 
     Ibv_modify_qp(qp, &qp_attr, IBV_QP_STATE | IBV_QP_SQ_PSN | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT | IBV_QP_RNR_RETRY | IBV_QP_MAX_QP_RD_ATOMIC);
-    printf("Modified the queue pair\n");*/
+    printf("Modified the queue pair\n");
 
     // STEP 7: Register a memory region --------------
     void* mr_buffer = malloc(BLOCK_SIZE);
@@ -156,44 +155,62 @@ int main(int argc, char **argv){
     struct ibv_mr *mr = Ibv_reg_mr(pd, mr_buffer, BLOCK_SIZE);
 
     // STEP 8: Exchange memory region information to handle operations -----------------
-    // This step requires nothing because we are a local node
+    // This step requires nothing when we are a local node
+    char* data_buffer = (char*) mr_buffer;
+    
+    // Set the buffer
+    data_buffer[8] = 1;
+    data_buffer[9] = 1;
+    data_buffer[10] = 1;
+    data_buffer[11] = 1;
+    
+    message mr_send;
+    message mr_recv;
+    mr_send.content.ints.a = mr->rkey;
+    mr_send.content.ints.b = (uint64_t) mr->addr;
+    if (is_server){
+      Write(sockfd, mr_send.content.data);
+      Read(sockfd, mr_recv.content.data);
+    } else {
+      Read(sockfd, mr_recv.content.data);
+      Write(sockfd, mr_send.content.data);
+    }
+    uint32_t rkey = mr_recv.content.ints.a;
+    uint64_t addy = mr_recv.content.ints.b;
 
     // STEP 9: Test communication ----------------
-    struct ibv_send_wr rdma_wr;
-    struct ibv_send_wr *bad_wr;
-    struct ibv_sge op;
-    char* data_buffer = (char*) mr_buffer;
-    memset(&op, 0, sizeof(op));
-    printf("%s\n", hostname);
-    if (hostname[4] == '0'){
-      data_buffer[8] = 1;
-      data_buffer[9] = 1;
-      data_buffer[10] = 1;
-      data_buffer[11] = 1;
-    } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
-    
-    op.addr = (uint64_t) mr->addr;
-    op.length = 4;
-    op.lkey = mr->lkey;
-
-    rdma_wr.wr.rdma.remote_addr = (uint64_t) mr->addr + 8;
-    rdma_wr.wr.rdma.rkey = mr->rkey;
-    rdma_wr.opcode = IBV_WR_RDMA_READ;
-    rdma_wr.sg_list = &op;
-    rdma_wr.num_sge = 1;
-
     printf("Before: ");
     for (int i = 0; i < 20; i++){
         printf("%d", data_buffer[i]);
     }
+    printf("\n");
+
+    if (is_server){ // server guard (or client guard)
+    struct ibv_send_wr rdma_wr;
+    struct ibv_send_wr *bad_wr;
+    struct ibv_sge op;
+    memset(&op, 0, sizeof(op));
+
+    op.addr = (uint64_t) mr->addr;
+    op.length = 4;
+    op.lkey = mr->lkey;
+
+    rdma_wr.wr.rdma.remote_addr = addy + 8;
+    rdma_wr.wr.rdma.rkey = rkey;
+    rdma_wr.opcode = IBV_WR_RDMA_WRITE;
+    rdma_wr.send_flags = IBV_SEND_FENCE; // IBV_SEND_SIGNALED;
+    rdma_wr.sg_list = &op;
+    rdma_wr.num_sge = 1;
 
     Ibv_post_send(qp, &rdma_wr, &bad_wr);
     // Blocks until write is finished?
     Ibv_poll_cq(cq);
+    }
 
-    printf("\nAfter: ");
+    // Give some time for the work requests to be completed on both sides before dies
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    printf("After: ");
     for (int i = 0; i < 20; i++){
         printf("%d", data_buffer[i]);
     }

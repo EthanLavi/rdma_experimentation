@@ -6,7 +6,7 @@ struct ibv_qp_init_attr init_qp_attr(struct ibv_cq* cq){
     struct ibv_qp_init_attr qp_init_attr;
     memset(&qp_init_attr, 0, sizeof(qp_init_attr));
     qp_init_attr.send_cq = cq;
-    qp_init_attr.sq_sig_all = 1;
+    qp_init_attr.sq_sig_all = 1; // Alternate with 1 and IBV_SEND_SIGNALED (0 here if flag passed)
     qp_init_attr.recv_cq = cq;
     qp_init_attr.qp_type = IBV_QPT_RC;
     qp_init_attr.cap.max_send_wr  = 1;

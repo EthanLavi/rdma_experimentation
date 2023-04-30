@@ -213,8 +213,6 @@ void Ibv_poll_cq(struct ibv_cq* cq) {
   }
 
   // You can identify which WR failed with wc.wr_id.
-  fprintf(stderr, "Poll failed with status %s (work request ID: %lu)\n", ibv_wc_status_str(wc.status), wc.wr_id);
+  fprintf(stderr, "Poll failed with status %s [%d] (work request ID: %lu)\n", ibv_wc_status_str(wc.status), wc.status, wc.wr_id);
   exit(1);
 }
-
-

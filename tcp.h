@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <netinet/in.h>
 
-#define PORT 8009
+#define PORT 8001
 #define MESSAGE_SIZE 24
 
 void error(const char* message){

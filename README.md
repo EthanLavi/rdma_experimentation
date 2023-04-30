@@ -31,3 +31,9 @@ python rexec.py --nodefile=nodefiles/r320.csv --remote_user=esl225 --remote_root
 ```{bash}
 python launch.py --experiment_name={exp} --nodry_run
 ```
+
+## GDB
+
+bazel build main --compilation_mode=dbg
+
+gdb bazel-bin/main
