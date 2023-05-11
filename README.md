@@ -1,11 +1,6 @@
-# Venice
+# IBV Verbs Experimentation
 
-An attempt at fixing loopback. This project is more for the learning benefits and isn't currently intended to be used by anyone else.
-
-## Origins
-
-The name 'Venice' originated because it is loosely based on Rome. 
-
+This project is more for the learning benefits and isn't currently intended to be used by anyone else.
 
 ## Deploying
 
@@ -27,7 +22,7 @@ python rexec.py --nodefile=nodefiles/r320.csv  --remote_user=esl225 --remote_roo
 python rexec.py --nodefile=nodefiles/r320.csv --remote_user=esl225 --remote_root=/users/esl225/venice --local_root=/home/manager/Research/venice --sync --cmd="cd venice/scripts/setup && python3 run.py --resources all && sudo apt install perftest -y"
 ```
 10. Wait while configuring. Can check /tmp/venice/logs for updates.
-11. [ONCE FINISHED] Login to nodes or continue to run C&C using launch.py
+11. [ONCE FINISHED] Login to nodes or continue to run actions using launch.py
 ```{bash}
 python launch.py --experiment_name={exp} --nodry_run
 ```
