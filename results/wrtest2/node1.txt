@@ -4,14 +4,20 @@ Loading: 0 packages loaded
 Analyzing: target //:main (0 packages loaded, 0 targets configured)
 INFO: Analyzed target //:main (0 packages loaded, 0 targets configured).
 INFO: Found 1 target...
-[0 / 5] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+[0 / 1] [Prepa] BazelWorkspaceStatusAction stable-status.txt
 Target //:main up-to-date:
   bazel-bin/main
-INFO: Elapsed time: 0.619s, Critical Path: 0.48s
-INFO: 3 processes: 1 internal, 2 linux-sandbox.
-INFO: Build completed successfully, 3 total actions
+INFO: Elapsed time: 0.089s, Critical Path: 0.00s
+INFO: 1 process: 1 internal.
+INFO: Build completed successfully, 1 total action
 INFO: Running command line: bazel-bin/main
 The device 'mlx4_0' was opened
 The protection domain was created for the device
 Opening a completion queue
 Creating a queue pair
+Sent Data: 11 621
+sockfd 3
+Received Data: 15 616
+Modified the queue pair
+Before: 00000000111100000000
+After: 00000000111100000000

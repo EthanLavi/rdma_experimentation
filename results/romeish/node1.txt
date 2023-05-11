@@ -1,0 +1,34 @@
+Loading: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //:main (0 packages loaded, 0 targets configured)
+INFO: Analyzed target //:main (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+[0 / 4] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+INFO: From Compiling main.cc:
+In file included from main.cc:3:
+tcp.h: In function 'void error(const char*)':
+tcp.h:19:28: warning: format not a string literal and no format arguments [-Wformat-security]
+   19 |     fprintf(stderr, message);
+      |                            ^
+Target //:main up-to-date:
+  bazel-bin/main
+INFO: Elapsed time: 0.871s, Critical Path: 0.69s
+INFO: 3 processes: 1 internal, 2 linux-sandbox.
+INFO: Build completed successfully, 3 total actions
+INFO: Running command line: bazel-bin/main
+The device 'mlx4_0' was opened
+The protection domain was created for the device
+Opening a completion queue
+Creating a queue pair
+Normal LID: 122
+1 STATUS:: 0 0
+Loopback: IBV_QPS_INIT
+2 STATUS:: 1 1
+Loopback: IBV_QPS_RTR
+3 STATUS:: 2 2
+Loopback: IBV_QPS_RTS
+4 STATUS:: 3 3
+Modified the queue pair
+Before: 00000000111100000000
+After: 00000000000000000000

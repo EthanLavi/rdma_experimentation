@@ -35,3 +35,6 @@ third-party
 /compile_commands.json
 # Directory where clangd puts its indexing work
 /.cache/
+
+# ignorning results directory
+# results/**

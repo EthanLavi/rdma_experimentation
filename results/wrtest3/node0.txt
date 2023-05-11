@@ -1,0 +1,31 @@
+Loading: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //:main (0 packages loaded, 0 targets configured)
+INFO: Analyzed target //:main (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+[0 / 4] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+INFO: From Compiling main.cc:
+In file included from main.cc:3:
+tcp.h: In function 'void error(const char*)':
+tcp.h:19:28: warning: format not a string literal and no format arguments [-Wformat-security]
+   19 |     fprintf(stderr, message);
+      |                            ^
+Target //:main up-to-date:
+  bazel-bin/main
+INFO: Elapsed time: 0.827s, Critical Path: 0.71s
+INFO: 3 processes: 1 internal, 2 linux-sandbox.
+INFO: Build completed successfully, 3 total actions
+INFO: Running command line: bazel-bin/main
+The device 'mlx4_0' was opened
+The protection domain was created for the device
+Opening a completion queue
+Creating a queue pair
+Sent Data: 141 540
+sockfd 4
+Received Data: 122 540
+Modified the queue pair
+2) Sent Data: 536936704 93880673185472
+2) Received Data: 536936704 94223645507264
+Before: 00000000111100000000
+Poll failed with status transport retry counter exceeded [12] (work request ID: 0)

@@ -1,0 +1,23 @@
+Loading: 
+Loading: 
+Loading: 0 packages loaded
+Analyzing: target //:main (0 packages loaded, 0 targets configured)
+INFO: Analyzed target //:main (0 packages loaded, 0 targets configured).
+INFO: Found 1 target...
+[0 / 1] [Prepa] BazelWorkspaceStatusAction stable-status.txt
+Target //:main up-to-date:
+  bazel-bin/main
+INFO: Elapsed time: 0.108s, Critical Path: 0.00s
+INFO: 1 process: 1 internal.
+INFO: Build completed successfully, 1 total action
+INFO: Running command line: bazel-bin/main
+The device 'mlx4_0' was opened
+The protection domain was created for the device
+Opening a completion queue
+Creating a queue pair
+Sent Data: 15 616
+sockfd 4
+Received Data: 11 621
+Modified the queue pair
+Before: 00000000000000000000
+Poll failed with status transport retry counter exceeded [12] (work request ID: 0)

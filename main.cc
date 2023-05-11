@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <thread>
 
-// Alternate building :: g++ -omain main.cc safe_verbs.h states.h -libverbs -g
+// Alternate building :: g++ -omain main.cc safe_verbs.h states.h tcp.h -libverbs -g
 static uint32_t BLOCK_SIZE = 256;
 
 typedef struct { 
@@ -67,6 +67,7 @@ int main(int argc, char **argv){
     struct ibv_port_attr port_attr;
     ibv_query_port(ctx, 1, &port_attr);
     uint16_t lid = port_attr.lid;
+    printf("Normal LID: %d\n", lid);
     uint32_t destination_qp_number = qp->qp_num;
     message m;
     message rec_buf;
@@ -82,9 +83,13 @@ int main(int argc, char **argv){
     uint16_t dlid = rec_buf.content.ints.a;
     uint32_t ddqp_num = rec_buf.content.ints.b;
 
+    struct ibv_qp_attr q_attr;
+    struct ibv_qp_init_attr q_init_attr;
+    ibv_query_qp(qp, &q_attr, IBV_QP_STATE, &q_init_attr);
+    printf("1 STATUS:: %d %d\n", q_attr.qp_state, q_attr.cur_qp_state);
+
     // STEP 6: Change the queue pair state -----------------
-   /*
-       ibv_qp_attr attr;
+    ibv_qp_attr attr;
     int attr_mask;
     attr = DefaultQpAttr();
     attr.qp_state = IBV_QPS_INIT;
@@ -93,6 +98,9 @@ int main(int argc, char **argv){
       IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS;
     printf("Loopback: IBV_QPS_INIT\n");
     Ibv_modify_qp(qp, &attr, attr_mask);
+
+    ibv_query_qp(qp, &q_attr, IBV_QP_STATE, &q_init_attr);
+    printf("2 STATUS:: %d %d\n", q_attr.qp_state, q_attr.cur_qp_state);
 
     attr.ah_attr.dlid = dlid;
     attr.qp_state = IBV_QPS_RTR;
@@ -104,49 +112,16 @@ int main(int argc, char **argv){
     printf("Loopback: IBV_QPS_RTR\n");
     Ibv_modify_qp(qp, &attr, attr_mask);
 
+    ibv_query_qp(qp, &q_attr, IBV_QP_STATE, &q_init_attr);
+    printf("3 STATUS:: %d %d\n", q_attr.qp_state, q_attr.cur_qp_state);
+
     attr.qp_state = IBV_QPS_RTS;
     attr_mask = (IBV_QP_STATE | IBV_QP_SQ_PSN | IBV_QP_TIMEOUT |
                IBV_QP_RETRY_CNT | IBV_QP_RNR_RETRY | IBV_QP_MAX_QP_RD_ATOMIC);
     printf("Loopback: IBV_QPS_RTS\n");
     Ibv_modify_qp(qp, &attr, attr_mask);
-    */
-    
-    struct ibv_qp_attr qp_attr = init_qp_attr();
-    // Setting the fields
-    qp_attr.qp_state = ibv_qp_state::IBV_QPS_INIT;
-    qp_attr.pkey_index = 0;
-    qp_attr.port_num = 1;
-    qp_attr.qp_access_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_REMOTE_ATOMIC;
-    // Modify into INIT state
-    Ibv_modify_qp(qp, &qp_attr, IBV_QP_STATE | IBV_QP_PKEY_INDEX | IBV_QP_PORT | IBV_QP_ACCESS_FLAGS);
-
-    qp_attr = init_qp_attr();
-    // Setting the fields
-    qp_attr.qp_state = ibv_qp_state::IBV_QPS_RTR;
-    qp_attr.path_mtu = IBV_MTU_4096;
-    qp_attr.dest_qp_num = ddqp_num;
-    qp_attr.rq_psn = 0;
-    qp_attr.max_dest_rd_atomic = 1;
-    qp_attr.min_rnr_timer = 12;
-    qp_attr.ah_attr.is_global = 0;
-    qp_attr.ah_attr.sl = 0;
-    qp_attr.ah_attr.src_path_bits = 0;
-    qp_attr.ah_attr.port_num = 1;
-    qp_attr.ah_attr.dlid = dlid;
-    // Modifying into Ready to Receive (RTR) state
-    Ibv_modify_qp(qp, &qp_attr, IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN | IBV_QP_RQ_PSN | IBV_QP_MAX_DEST_RD_ATOMIC | IBV_QP_MIN_RNR_TIMER);
-
-    qp_attr = init_qp_attr();
-    // Setting fields
-    qp_attr.qp_state = ibv_qp_state::IBV_QPS_RTS;
-    qp_attr.sq_psn = 0;
-    qp_attr.timeout = 14; 
-    qp_attr.retry_cnt = 7;
-    qp_attr.rnr_retry = 7;
-    qp_attr.max_rd_atomic = 1;
-    // Modifying into Ready to Send (RTS) state
-
-    Ibv_modify_qp(qp, &qp_attr, IBV_QP_STATE | IBV_QP_SQ_PSN | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT | IBV_QP_RNR_RETRY | IBV_QP_MAX_QP_RD_ATOMIC);
+    ibv_query_qp(qp, &q_attr, IBV_QP_STATE, &q_init_attr);
+    printf("4 STATUS:: %d %d\n", q_attr.qp_state, q_attr.cur_qp_state);
     printf("Modified the queue pair\n");
 
     // STEP 7: Register a memory region --------------
@@ -215,7 +190,7 @@ int main(int argc, char **argv){
         printf("%d", data_buffer[i]);
     }
 
-    // CLEANUP STEP ---------------------------
+    // CLEANUP STEP --------------------------- (Must be done in reverse, order matters!)
     free(mr_buffer);
     // Close communication sockets
     close(sockfd);
@@ -226,7 +201,7 @@ int main(int argc, char **argv){
     // Close completion queue
     Ibv_destroy_cq(cq);
     // Deallocate protection domain
-    Ibv_dealloc_pd(pd); // this must be done before close device. Order appears to matter in cleanup!
+    Ibv_dealloc_pd(pd);
     // Close device
     Ibv_close_device(ctx);
     return 0;
