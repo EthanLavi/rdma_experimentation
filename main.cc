@@ -11,7 +11,7 @@
 // Alternate building :: g++ -omain main.cc safe_verbs.h states.h tcp.h -libverbs -g
 static uint32_t BLOCK_SIZE = 256;
 
-typedef struct { 
+struct { 
   union {
     struct {
       uint64_t a;
